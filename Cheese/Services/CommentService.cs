@@ -26,7 +26,7 @@ namespace CheeseHub.Services
             Comment model = new Comment
             {
                 Content = createCommentDTO.Content,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
                 ParentCommentId = string.IsNullOrEmpty( createCommentDTO.ParentId ) ? null : Guid.Parse(createCommentDTO.ParentId),
                 UserId = userId,
                 VideoId = createCommentDTO.VideoId

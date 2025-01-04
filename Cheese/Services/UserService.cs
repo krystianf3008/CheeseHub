@@ -38,6 +38,7 @@ namespace CheeseHub.Services
 
             User user = new User
             {
+                CreatedAt = DateTime.UtcNow,
                 Email = model.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
                 Name = model.Name,

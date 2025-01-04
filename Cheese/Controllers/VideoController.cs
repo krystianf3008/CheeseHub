@@ -247,7 +247,7 @@ namespace CheeseHub.Controllers
                     UserId = user.Id,
                     Path = filePath,
                     ImagePath = coverPath,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow,
                     Status = (char)Status.New,
                     CategoryId = Guid.Parse( video.CategoryId),
                 };

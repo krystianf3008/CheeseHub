@@ -28,7 +28,7 @@ namespace CheeseHub.Controllers
             _userService = userService;
             _jwtService = jwtService;
         }
-        [HttpPost]
+        [HttpPost("")]
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterUserDTO model)
         {
