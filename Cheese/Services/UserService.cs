@@ -6,6 +6,7 @@ using CheeseHub.Models.Role;
 using CheeseHub.Models.User.DTOs;
 using Microsoft.EntityFrameworkCore;
 using CheeseHub.Models.RefreshToken;
+using CheeseHub.Enums;
 namespace CheeseHub.Services
 {
     public class UserService : BaseService<User>,IUserService
@@ -42,7 +43,9 @@ namespace CheeseHub.Services
                 Name = model.Name,
                 Surname = model.Surname,
                 FirstName = model.FirstName,
-                RoleId = roleId.Value
+                RoleId = roleId.Value,
+                IsTokenValid = true,
+                Status = (char)Status.New
                 
 
             };

@@ -10,7 +10,7 @@ namespace CheeseHub.Interfaces.Services
         public Task<Guid> Add(T model);
         public Task<Guid> Update(T model);
         public Task Delete(Guid id);
-        public Task<bool> IsNameUnique(string name);
+        public bool IsNameUnique(string name);
 
     }
 }

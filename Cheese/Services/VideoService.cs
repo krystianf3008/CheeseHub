@@ -1,10 +1,13 @@
 ﻿using Azure.Core;
 using CheeseHub.Data;
+using CheeseHub.Enums;
 using CheeseHub.Interfaces.Services;
 using CheeseHub.Models.User;
 using CheeseHub.Models.Video;
 using CheeseHub.Models.Video.DTOs;
+using CheeseHub.Models.VideoReaction;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
@@ -52,41 +55,44 @@ namespace CheeseHub.Services
                 outputStream.Close();
             }
         }
-        public async Task<IQueryable< VideoListDTO>> GetVidosWithPagination(string search = null, int pageSize = 10, int page = 0)
+        public async Task<IQueryable< VideoListDTO>> GetVidosWithPagination(string search = null, int pageSize = 10, int page = 0, string categoryId = null, Guid? userId = null,bool? liked = null, bool admin = false)
         {
-            IQueryable<Video> query = ApplicationDbContext.Videos.Include(x => x.User);
-            if(!string.IsNullOrEmpty(search) )
+            char bannedStatus = (char)Status.Banned;
+            char hiddenStatus = (char)Status.Hidden;
+
+            IQueryable<Video> query = ApplicationDbContext.Videos.Include(x => x.User).Include(x => x.Reactions).Include(x => x.Views);
+            if(!admin)
+            {
+                query = query.Where(v => v.Status != bannedStatus);
+            }
+            if(userId != null)
+            {
+                if(liked == true)
+                {
+                    query = query.Include(q => q.Reactions).Where( q=> q.Reactions.Any(r => r.UserId == userId && r.IsLike) );
+                }
+                query = query.Where(v => v.UserId == userId);
+            }
+            else
+            {
+                if(!admin)
+                {
+                    query = query.Where(v => v.Status != hiddenStatus);
+
+                }
+            }
+
+            if (!string.IsNullOrEmpty(search) )
             {
                 query = query.Where(v => v.Name.ToLower().Contains(search.ToLower()));
             }
-
-            int totalCount = await query.CountAsync();
-            query= query
-            .Skip(page * pageSize)
-            .Take(pageSize);
-
-            return query.Select(x => new VideoListDTO
+            if(!string.IsNullOrEmpty(categoryId) )
             {
-                Name = x.Name,
-                Id = x.Id,
-                UserId = x.UserId,
-                UserName = x.User.Name,
-                Description = x.Description,
-                ImagePath = "",
-                CreatedAt = x.CreatedAt,
-                Path = x.Path,
+                Guid categoryGuid = Guid.Parse(categoryId);
+                query = query.Where(v => v.CategoryId == categoryGuid);
 
-            });
-        }
-        public async Task<SingleVideoDTO> GetSingleVideo(Guid id)
-        {
-            IQueryable<Video> query = ApplicationDbContext.Videos.Include(x => x.User);
-            if (!string.IsNullOrEmpty(search))
-            {
-                query = query.Where(v => v.Name.ToLower().Contains(search.ToLower()));
             }
 
-            int totalCount = await query.CountAsync();
             query = query
             .Skip(page * pageSize)
             .Take(pageSize);
@@ -101,9 +107,120 @@ namespace CheeseHub.Services
                 ImagePath = "",
                 CreatedAt = x.CreatedAt,
                 Path = x.Path,
+                Status = x.Status,
+                TotalDisLikes = x.Reactions.Where(r => !r.IsLike).Count(),
+                TotalLikes = x.Reactions.Where(r => r.IsLike).Count(),
+                TotalViews = x.Views.Count(),
 
-            });
+            }).OrderByDescending(x => x.CreatedAt);
         }
+        public async Task<SingleVideoDTO?> GetSingleVideo(Guid id,Guid? userId, bool admin = false)
+        {
+            Video model= await ApplicationDbContext.Videos.Include(x => x.Views).Include(x => x.User).FirstOrDefaultAsync(v => v.Id == id );
+            if(model == null)
+            {
+                return null;
 
+            }
+            if(model.Status == (char)Status.Banned && !admin)
+            {
+                throw new UnauthorizedAccessException();
+            }
+            IQueryable<VideoReaction> reactionsQuery =  ApplicationDbContext.VideoReactions.Where(x => x.TargetId == id);
+            int totalLikes = await reactionsQuery.Where(x => x.IsLike).CountAsync();
+            int totalDisLikes = await reactionsQuery.Where(x => !x.IsLike).CountAsync();
+            int totalViews = await ApplicationDbContext.VideoViews.Where(x => x.VideoId == id).CountAsync();
+            SingleVideoDTO singleVideoDTO = new SingleVideoDTO
+            {
+                CreatedAt = model.CreatedAt,
+                Description = model.Description,
+                Name = model.Name,
+                Id = model.Id,
+                UserId = model.UserId,
+                UserName = model.User.Name,
+                TotalLikes = totalLikes,
+                TotalDisLikes = totalDisLikes,
+                TotalViews = totalViews,
+                Status = model.Status
+
+            };
+            if (userId != null)
+            {
+                VideoReaction? videoReaction = await ApplicationDbContext.VideoReactions.FirstOrDefaultAsync(v => v.TargetId == id && v.UserId == userId);
+                if(videoReaction != null)
+                {
+                    singleVideoDTO.IsLiked = videoReaction.IsLike;
+                    singleVideoDTO.IsDisLiked = !videoReaction.IsLike;
+                }
+                if(model.Status == (char)Status.Hidden )
+                {
+                    if (model.UserId == userId) 
+                    {
+                        return singleVideoDTO;
+                    }
+                }
+            }
+            if(model.Status == (char)Status.Hidden)
+            {
+                throw new UnauthorizedAccessException();
+            }
+            return singleVideoDTO;
+
+
+        }
+        
+        public async Task Ban(Guid id)
+        {
+            Video model = await ApplicationDbContext.Videos.Include(x => x.Views).Include(x => x.User).FirstOrDefaultAsync(v => v.Id == id);
+            if (model == null)
+            {
+                throw new Exception("Not found");
+            }
+            model.Status = (char)Status.Banned;
+            ApplicationDbContext.Update(model);
+            ApplicationDbContext.SaveChanges();
+        }
+        public async Task Unban(Guid id)
+        {
+            Video model = await ApplicationDbContext.Videos.Include(x => x.Views).Include(x => x.User).FirstOrDefaultAsync(v => v.Id == id);
+            if (model == null)  
+            {
+                throw new Exception("Not found");
+            }
+            model.Status = (char)Status.New;
+            ApplicationDbContext.Update(model);
+            ApplicationDbContext.SaveChanges();
+        }
+        public async Task Hide(Guid id,Guid UserId)
+        {
+            Video model = await ApplicationDbContext.Videos.Include(x => x.Views).Include(x => x.User).FirstOrDefaultAsync(v => v.Id == id);
+            if (model == null)
+            {
+                throw new Exception("Not found");
+            }
+            if (model.UserId != UserId)
+            {
+                throw new UnauthorizedAccessException();
+            }
+            model.Status = (char)Status.Hidden;
+            ApplicationDbContext.Update(model);
+            ApplicationDbContext.SaveChanges();
+        }
+        public async Task Show(Guid id, Guid UserId)
+        {
+            Video model = await ApplicationDbContext.Videos.Include(x => x.Views).Include(x => x.User).FirstOrDefaultAsync(v => v.Id == id);
+            if (model == null)
+            {
+                throw new Exception("Not found");
+            }
+            if (model.UserId != UserId)
+            {
+                throw new UnauthorizedAccessException();
+            }
+            model.Status = (char)Status.Banned;
+            ApplicationDbContext.Update(model);
+            ApplicationDbContext.SaveChanges();
+
+        }
     }
 }

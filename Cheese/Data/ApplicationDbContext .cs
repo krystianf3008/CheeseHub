@@ -1,4 +1,5 @@
-﻿using CheeseHub.Models.Comment;
+﻿using CheeseHub.Models.Category;
+using CheeseHub.Models.Comment;
 using CheeseHub.Models.CommentReaction;
 using CheeseHub.Models.RefreshToken;
 using CheeseHub.Models.Role;
@@ -17,7 +18,12 @@ namespace CheeseHub.Data
         public DbSet<Video> Videos { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
+        public DbSet<Category> Category { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<VideoReaction> VideoReactions{ get; set; }
+        public DbSet<CommentReaction> CommentReactions { get; set; }
+        public DbSet<VideoView> VideoViews{ get; set; }
+        public DbSet<Comment> Comments{ get; set; }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
@@ -25,69 +31,116 @@ namespace CheeseHub.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
             modelBuilder.Entity<User>(entity =>
             {
-                entity.HasIndex(x => x.Email).IsUnique();   
+                entity.HasIndex(x => x.Email).IsUnique();
                 entity.HasIndex(x => x.Name).IsUnique();
-                entity.HasOne(u => u.Role).WithMany(r => r.Users).HasForeignKey(u => u.RoleId).OnDelete(DeleteBehavior.Restrict);
-                entity.HasMany(r => r.Videos).WithOne(x => x.User).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-
-
+                entity.HasOne(u => u.Role)
+                      .WithMany(r => r.Users)
+                      .HasForeignKey(u => u.RoleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasMany(r => r.Videos)
+                      .WithOne(x => x.User)
+                      .HasForeignKey(x => x.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasMany(r => r.Comments)
+                  .WithOne(x => x.User)
+                  .HasForeignKey(x => x.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
             });
+
             modelBuilder.Entity<Role>(entity =>
             {
                 entity.HasKey(r => r.Id);
                 entity.HasIndex(x => x.Name).IsUnique();
-                entity.HasMany(r => r.Users).WithOne(x => x.Role).HasForeignKey(x => x.RoleId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasMany(r => r.Users)
+                      .WithOne(x => x.Role)
+                      .HasForeignKey(x => x.RoleId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
-            modelBuilder.Entity<RefreshToken>()
-            .HasOne(rt => rt.User)
-            .WithMany(u => u.RefreshTokens)
-            .HasForeignKey(rt => rt.UserId);
-            modelBuilder.Entity<Comment>()
-            .HasOne(c => c.Video)
-            .WithMany(v => v.Comments)
-            .HasForeignKey(c => c.VideoId);
+            modelBuilder.Entity<Category>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.HasIndex(x => x.Name).IsUnique();
+                entity.HasMany(r => r.Videos)
+                      .WithOne(x => x.Category)
+                      .HasForeignKey(x => x.CategoryId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
 
-            modelBuilder.Entity<Comment>()
-                .HasOne(c => c.User)
-                .WithMany()
-                .HasForeignKey(c => c.UserId);
+            modelBuilder.Entity<Video>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.HasMany(r => r.Comments)
+                      .WithOne(x => x.Video)
+                      .HasForeignKey(x => x.VideoId)
+                      .OnDelete(DeleteBehavior.Restrict); // Zmiana na Restrict
+                entity.HasMany(r => r.Views)
+                      .WithOne(x => x.Video)
+                      .HasForeignKey(x => x.VideoId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasMany(r => r.Reactions)
+                      .WithOne(x => x.Video)
+                      .HasForeignKey(x => x.TargetId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
 
-            modelBuilder.Entity<Comment>()
-                .HasOne(c => c.ParentComment)
-                .WithMany(c => c.Replies)
-                .HasForeignKey(c => c.ParentCommentId);
+            modelBuilder.Entity<Comment>(entity =>
+            {
+                entity.HasKey(c => c.Id);
 
-            modelBuilder.Entity<VideoReaction>()
-                .HasOne(vr => vr.Video)
-                .WithMany(v => v.Reactions)
-                .HasForeignKey(vr => vr.TargetId);
+                entity.HasOne(c => c.User) 
+                      .WithMany(u => u.Comments) 
+                      .HasForeignKey(c => c.UserId) 
+                      .OnDelete(DeleteBehavior.Cascade); 
 
-            modelBuilder.Entity<VideoReaction>()
-                .HasOne(vr => vr.User)
-                .WithMany()
-                .HasForeignKey(vr => vr.UserId);
+                entity.HasOne(c => c.Video)
+                      .WithMany(v => v.Comments)
+                      .HasForeignKey(c => c.VideoId)
+                      .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<CommentReaction>()
-                .HasOne(cr => cr.Comment)
-                .WithMany(c => c.Reactions)
-                .HasForeignKey(cr => cr.TargetId);
+                entity.HasOne(c => c.ParentComment)
+                      .WithMany(c => c.Replies)
+                      .HasForeignKey(c => c.ParentCommentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
 
-            modelBuilder.Entity<CommentReaction>()
-                .HasOne(cr => cr.User)
-                .WithMany()
-                .HasForeignKey(cr => cr.UserId);
+            modelBuilder.Entity<VideoReaction>(entity =>
+            {
+                entity.HasOne(vr => vr.Video)
+                      .WithMany(v => v.Reactions)
+                      .HasForeignKey(vr => vr.TargetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(vr => vr.User)
+                      .WithMany()
+                      .HasForeignKey(vr => vr.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
 
-            modelBuilder.Entity<VideoView>()
-                .HasOne(vv => vv.Video)
-                .WithMany(v => v.Views)
-                .HasForeignKey(vv => vv.TargetId);
+            modelBuilder.Entity<CommentReaction>(entity =>
+            {
+                entity.HasOne(cr => cr.Comment)
+                      .WithMany(c => c.Reactions)
+                      .HasForeignKey(cr => cr.TargetId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(cr => cr.User)
+                      .WithMany()
+                      .HasForeignKey(cr => cr.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
 
-            modelBuilder.Entity<VideoView>()
-                .HasOne(vv => vv.User)
-                .WithMany(u => u.VideoViews)
-                .HasForeignKey(vv => vv.UserId);
+            modelBuilder.Entity<VideoView>(entity =>
+            {
+                entity.HasOne(vv => vv.Video)
+                      .WithMany(v => v.Views)
+                      .HasForeignKey(vv => vv.VideoId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(vv => vv.User)
+                      .WithMany(u => u.VideoViews)
+                      .HasForeignKey(vv => vv.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }

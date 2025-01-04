@@ -26,7 +26,7 @@ namespace CheeseHub.Services
         }
         public async Task<(string JwtToken, string RefreshToken)> GenerateTokens(Guid userId)
         {
-            var user = await _userService.GetById(userId);
+            var user = await _userService.GetWithRole(id: userId);
             if (user == null)
             {
                 throw new Exception("User not found");
@@ -35,7 +35,8 @@ namespace CheeseHub.Services
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Name)
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.Name)
             };
 
             var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_authenticationSettings.Key));

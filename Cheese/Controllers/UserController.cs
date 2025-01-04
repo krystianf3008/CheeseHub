@@ -2,10 +2,14 @@
 using CheeseHub.Models.Role;
 using CheeseHub.Models.User;
 using CheeseHub.Models.User.DTOs;
+using CheeseHub.Models.Video.Validators;
+using CheeseHub.Models.Video;
 using CheeseHub.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using CheeseHub.Models.User.Validators;
+using FluentValidation;
 
 namespace CheeseHub.Controllers
 {
@@ -28,6 +32,12 @@ namespace CheeseHub.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterUserDTO model)
         {
+            RegisterUserDTOValidator validator = new RegisterUserDTOValidator(_userService);
+            var result = await validator.ValidateAsync(model);
+            if (!result.IsValid)
+            {
+                return BadRequest(result.Errors);
+            }
             User user = await _userService.RegisterUser(model);
             return CreatedAtRoute(
             "GetUser",
@@ -38,7 +48,12 @@ namespace CheeseHub.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginUserDto model)
         {
-
+            LoginUserDtoValidator validator = new LoginUserDtoValidator(_userService);
+            var result = validator.Validate(model);
+            if (!result.IsValid)
+            {
+                return BadRequest(result.Errors);
+            }
             User? user = await _userService.GetByEmail(model.Email);
             if (user == null)
             {
@@ -111,8 +126,10 @@ namespace CheeseHub.Controllers
         public async Task<IActionResult> IsUserExistsByName([FromBody] string name)
         {
             
-            return Ok(new {exists = await _userService.IsNameUnique(name) });
+            return Ok(new {exists =  _userService.IsNameUnique(name) });
         }
+
+        [Authorize]
         [HttpGet("IsTokenValid/{id}", Name = "IsTokenValid")]
         public async Task<IActionResult> IsTokenValid([FromRoute] string id)
         {

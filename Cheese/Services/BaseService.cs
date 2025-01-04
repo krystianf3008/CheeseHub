@@ -45,9 +45,9 @@ namespace CheeseHub.Services
             await _dBContext.SaveChangesAsync();
             return model.Id;
         }
-        public async Task<bool> IsNameUnique(string name)
+        public bool IsNameUnique(string name)
         {
-            return await (_dBContext.Set<T>().Where(x => x.Name == name).CountAsync()) == 0;
+            return _dBContext.Set<T>().Where(x => x.Name == name).Count() == 0;
         }
     }
 }

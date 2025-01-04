@@ -2,7 +2,8 @@
 {
     public class CreateCommentDTO
     {
-        public Guid?  ParentId { get; set; }
+        public Guid VideoId {  get; set; }
+        public string  ParentId { get; set; }
         public string Content { get; set; }
     }
 }

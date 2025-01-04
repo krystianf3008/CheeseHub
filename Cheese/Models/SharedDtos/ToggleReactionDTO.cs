@@ -2,8 +2,7 @@
 {
     public class ToggleReactionDTO
     {
-        public Guid UserId { get; set; }
-        public Guid VideoId { get; set; }
+        public Guid TargetId { get; set; }
         public char ToggleType { get; set; }
     }
 }

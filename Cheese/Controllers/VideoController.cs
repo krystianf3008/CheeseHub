@@ -12,6 +12,13 @@ using CheeseHub.Models.User;
 using CheeseHub.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using CheeseHub.Models.SharedDtos;
+using CheeseHub.Enums;
+using CheeseHub.Models.Video.Validators;
+using System.ComponentModel.DataAnnotations;
+using CheeseHub.Models.Category;
+using CheeseHub.Models.Shared;
+
 
 namespace CheeseHub.Controllers
 {
@@ -24,16 +31,25 @@ namespace CheeseHub.Controllers
         private readonly IVideoService _videoService;
         private readonly IUserService _userService;
         private readonly IWebHostEnvironment _environment;
+        private readonly IVideoViewService _videoViewService;
+        private readonly IVideoReactionService _videoReactionService;
+        private readonly ICommentReactionService _commentReactionService;
+        private readonly ICategoryService _categoryService;
 
-        public VideoController(IVideoService videoService, IWebHostEnvironment environment, IUserService userService, )
+        public VideoController(IVideoService videoService, IWebHostEnvironment environment, IUserService userService, IVideoViewService videoViewService, IVideoReactionService videoReactionService, ICommentReactionService commentReactionService, ICategoryService categoryService)
         {
             _videoService = videoService;
             _environment = environment;
-            _userService = userService; 
+            _userService = userService;
+            _videoViewService = videoViewService;
+            _videoReactionService = videoReactionService;
+            _commentReactionService = commentReactionService;
+            _categoryService = categoryService;
         }
         [HttpGet("{id}", Name = "GetVideo")]
         public async Task<IActionResult> Get([FromBody] Guid Id)
         {
+
             Video video = await _videoService.GetById(Id);
             if (video == null)
             {
@@ -43,9 +59,23 @@ namespace CheeseHub.Controllers
             return Ok(video);
         }
         [HttpGet(Name = "GetVideos")]
-        public async Task<IActionResult> GetVideos([FromQuery] int page , [FromQuery] int pageSize, [FromQuery] string search = null)
+        public async Task<IActionResult> GetVideos([FromQuery] int page , [FromQuery] int pageSize, [FromQuery] string search = null, [FromQuery] string? categoryId = null, [FromQuery] bool? my = null, [FromQuery] bool? liked = null)
         {
-            IQueryable<VideoListDTO> videos = await _videoService.GetVidosWithPagination(search : search,pageSize : pageSize, page : page);
+            Guid? userId = null;
+            bool isAdmin = User.IsInRole("Admin");
+            if(my == true)
+            {
+                if (User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    userId = Guid.Parse((User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier).FirstOrDefault()).Value);
+                }
+                else
+                {
+                    return Unauthorized();
+                }
+            }
+            
+            IQueryable<VideoListDTO> videos = await _videoService.GetVidosWithPagination(search : search,pageSize : pageSize, page : page, categoryId: categoryId, userId:userId, liked : liked, admin: isAdmin);
 
             return Ok(videos);
         }
@@ -134,10 +164,45 @@ namespace CheeseHub.Controllers
 
             return Ok(video);
         }
+        [HttpGet("Watch/{id}", Name = "Watch")]
+        public async Task<IActionResult> GetWatch(Guid Id)
+        {
+            Guid? userId = null;
+            bool isAdmin = User.IsInRole("Admin");
+
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                 userId = Guid.Parse((User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier).FirstOrDefault()).Value);
+            }
+            try
+            {
+                SingleVideoDTO? singleVideoDTO = await _videoService.GetSingleVideo(Id, userId, admin: isAdmin);
+                if (singleVideoDTO == null)
+                {
+                    return NotFound();
+                }
+                await _videoViewService.AddView(Id, userId);
+
+                return Ok(singleVideoDTO);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized();
+            }
+           
+        }
+
         [HttpPost]
         [Authorize]
+        //TODO move logic to service
         public  async Task<IActionResult> Post([FromForm] CreateVideoDTO video)
         {
+            CreateVideoDTOValidator validator = new CreateVideoDTOValidator(_categoryService);
+            var result =  await validator.ValidateAsync(video);
+            if (! result.IsValid)
+            {
+                return BadRequest(result.Errors);
+            }
             if (video == null || video.File == null)
             {
                 return BadRequest("Invalid video data");
@@ -181,7 +246,10 @@ namespace CheeseHub.Controllers
                     Description = video.Description,
                     UserId = user.Id,
                     Path = filePath,
-                    ImagePath = coverPath
+                    ImagePath = coverPath,
+                    CreatedAt = DateTime.Now,
+                    Status = (char)Status.New,
+                    CategoryId = Guid.Parse( video.CategoryId),
                 };
 
                 await _videoService.Add(newVideo);
@@ -196,5 +264,97 @@ namespace CheeseHub.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+        [HttpPost("ToggleVideoReaction", Name = "ToggleVideoReaction")]
+
+        [Authorize]
+        public async Task<IActionResult> ToggleVideoReaction(ToggleReactionDTO model)
+        {
+            try
+            {
+                Guid userId = Guid.Parse((User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier).FirstOrDefault()).Value);
+
+                await _videoReactionService.ToggleReaction(userId, model.TargetId, (ToggleReactionEnum)model.ToggleType);
+                return Ok(true);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+
+        }
+        [Authorize(Roles="Admin")]
+        [HttpPost("Ban", Name = "BanVideo")]
+        public async Task<IActionResult> Ban(ModelId model)
+        {
+
+            try
+            {
+                await _videoService.Ban(Guid.Parse(model.Id));
+
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized();
+            }
+
+            return Ok();
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpPost("Unban", Name = "UnbanVideo")]
+        public async Task<IActionResult> Unban([FromBody] ModelId model)
+        {
+
+            try
+            {
+                await _videoService.Unban(Guid.Parse(model.Id));
+
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized();
+            }
+
+            return Ok();
+        }
+        [Authorize]
+        [HttpPost("Show", Name = "ShowVideo")]
+        public async Task<IActionResult> Show([FromBody] ModelId model)
+        {
+
+            try
+            {
+                Guid userId = Guid.Parse((User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier).FirstOrDefault()).Value);
+
+                await _videoService.Show(Guid.Parse(model.Id), userId);
+
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized();
+            }
+
+            return Ok();
+        }
+        [Authorize]
+        [HttpPost("Hide", Name = "HideVideo")]
+        public async Task<IActionResult> Hide([FromBody] ModelId model)
+        {
+
+            try
+            {
+                Guid userId = Guid.Parse((User.Claims.Where(x => x.Type == ClaimTypes.NameIdentifier).FirstOrDefault()).Value);
+
+                await _videoService.Hide(Guid.Parse(model.Id),userId);
+
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized();
+            }
+
+            return Ok();
+        }
+
+
     }
 }

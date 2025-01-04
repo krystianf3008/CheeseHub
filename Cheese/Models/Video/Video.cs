@@ -17,7 +17,10 @@ namespace CheeseHub.Models.Video
         public string ImagePath { get; set; }
         public Guid UserId { get; set; }
         public virtual User.User User { get; set; }
+        public Guid CategoryId { get; set; }
+        public virtual Category.Category Category { get; set; }
         public DateTime CreatedAt { get; set; }
+        public char Status { get; set; }
         public ICollection<Comment.Comment> Comments { get; set; }
         public ICollection<VideoReaction.VideoReaction> Reactions { get; set; }
         public ICollection<VideoView.VideoView> Views { get; set; }

@@ -3,7 +3,7 @@
     public class VideoView
     {
         public Guid Id { get; set; }
-        public Guid TargetId { get; set; }
+        public Guid VideoId { get; set; }
         public Guid? UserId { get; set; } 
         public DateTime ViewedAt { get; set; }
 

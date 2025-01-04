@@ -1,5 +1,6 @@
 ﻿using CheeseHub.Interfaces.Services;
 using CheeseHub.Models.Role.DTOs;
+using CheeseHub.Services;
 using FluentValidation;
 
 namespace CheeseHub.Models.Role.Validators
@@ -8,7 +9,7 @@ namespace CheeseHub.Models.Role.Validators
     {
         public CreateRoleDTOValidator(IRoleService roleService)
         {
-            RuleFor(x => x.Name).MustAsync((x, cancellation) => roleService.IsNameUnique(x)).WithMessage("Name must be unique");
+            RuleFor(x => x.Name).Must(x => roleService.IsNameUnique(x)).WithMessage("Name must be unique");
         }
     }
 }

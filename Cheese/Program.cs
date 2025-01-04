@@ -18,6 +18,13 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 using Swashbuckle.AspNetCore.Swagger;
+using CheeseHub.Middlewares;
+using CheeseHub.Models.Category.DTOs;
+using CheeseHub.Models.Category.Validators;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Filters;
+using FluentValidation.AspNetCore;
+using System.Reflection;
 
 namespace CheeseHub
 {
@@ -27,29 +34,70 @@ namespace CheeseHub
         {
             var builder = WebApplication.CreateBuilder(args);
             var configuration = builder.Configuration;
-            // Add services to the container.
             AuthenticationSettings authenticationSettings = new AuthenticationSettings();
             configuration.GetSection("JWT").Bind(authenticationSettings);
-            builder.Services.AddControllers().AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
-            });
+
             var connectionString = builder.Configuration.GetConnectionString("VideoDb");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString));
+            builder.Services.AddCors(options =>
+            {
+                    
+                options.AddPolicy("AllowAllOrigins",
+
+                    builder =>
+                    {
+
+                        builder.AllowAnyOrigin()
+                               .AllowAnyHeader()
+                               .AllowAnyMethod()
+                               .WithExposedHeaders("www-authenticate");
+                    });
+            });
             builder.Services.AddSingleton(authenticationSettings);
             builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
+            builder.Services.AddScoped(typeof(IReactionService<>), typeof(ReactionService<>));
             builder.Services.AddScoped<IVideoService, VideoService>();
             builder.Services.AddScoped<IValidator<CreateVideoDTO>, CreateVideoDTOValidator>();
             builder.Services.AddScoped<IRoleService, RoleService>();
             builder.Services.AddScoped<IValidator<CreateRoleDTO>, CreateRoleDTOValidator>();
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
+
             builder.Services.AddScoped<IUserService, UserService>();
-            builder.Services.AddScoped<IValidator<RegisterUserDTO>, RegisterUserDTOValidator>();
-            builder.Services.AddScoped<IValidator<LoginUserDto>, LoginUserDtoValidator>();
+
             builder.Services.AddScoped<IJwtService, JwtService>();
+            builder.Services.AddScoped<ICommentService, CommentService>();
+            builder.Services.AddScoped<ICommentReactionService, CommentReactionService>();
+            builder.Services.AddScoped<IVideoReactionService, VideoReactionService>();
+            builder.Services.AddScoped<IVideoViewService, VideoViewService>();
+            
+
+            builder.Services.AddFluentValidationAutoValidation(configuration =>
+            {
+                configuration.DisableBuiltInModelValidation = true;
+
+                configuration.ValidationStrategy = SharpGrip.FluentValidation.AutoValidation.Mvc.Enums.ValidationStrategy.All;
+                configuration.EnableBodyBindingSourceAutomaticValidation = true;
+
+                configuration.EnableFormBindingSourceAutomaticValidation = true;
+
+                configuration.EnableQueryBindingSourceAutomaticValidation = true;
+
+                configuration.EnablePathBindingSourceAutomaticValidation = true;
+
+                configuration.EnableCustomBindingSourceAutomaticValidation = true;
+
+            });
+            builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
 
             builder.Services.AddOpenApiDocument();
-            builder.Services.AddFluentValidationAutoValidation();
+
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+            })
+             ;
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = "Bearer";
@@ -66,16 +114,7 @@ namespace CheeseHub
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authenticationSettings.Key))
                 };
             });
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAllOrigins",
-                    builder =>
-                    {
-                        builder.AllowAnyOrigin()
-                               .AllowAnyHeader()
-                               .AllowAnyMethod();
-                    });
-            });
+
 
 
 
@@ -120,9 +159,11 @@ namespace CheeseHub
                 });
                 DatabaseManagmentService.MigrationInitialisation(app);
             }
+            app.UseCors("AllowAllOrigins");
+
             app.UseAuthentication();
             app.UseAuthorization();
-            app.UseCors("AllowAllOrigins");
+            app.UseMiddleware<TokenValidationMiddleware>();
 
             app.UseHttpsRedirection();
 
