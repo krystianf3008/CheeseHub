@@ -153,17 +153,6 @@ namespace CheeseHub.Controllers
             );
         }
 
-        [HttpGet("All", Name = "GetAll")]
-        public async Task<IActionResult> GetAll()
-        {
-            List<Video> video = await _videoService.GetAll();
-            if (video == null)
-            {
-                return NotFound("Video is null");
-            }
-
-            return Ok(video);
-        }
         [HttpGet("Watch/{id}", Name = "Watch")]
         public async Task<IActionResult> GetWatch(Guid Id)
         {
