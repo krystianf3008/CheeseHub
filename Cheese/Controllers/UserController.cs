@@ -92,7 +92,7 @@ namespace CheeseHub.Controllers
             return Ok("Logged out successfully");
         }
 
-
+        [Authorize(Roles="Admin")]
         [HttpGet("{id}", Name = "GetUser")]
         public async Task<IActionResult> Get([FromBody] Guid id)
         {
