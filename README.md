@@ -10,7 +10,7 @@
 
 **Kryterium 1:**
 
-Poniżej odniesienia do kryteriów znajduje się dokumentacja techniczna. Znajduje się tam opis wszystkich funkcjonalności aplikacji, opis endpointów api oraz wykorzystanych technologii i wzorców.
+W głównym katalogu znajduje się plik DOKUMENTACJA.DOCX, który zawiera dokumentacje
 
 **Kryterium 2:**
 
