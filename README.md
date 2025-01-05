@@ -22,7 +22,7 @@ Wykorzystano ORM EntityFramework, metoda GetVideos z kontrolera Video zawiera ba
 
 **Kryterium 4:**
 
-Użytkownik zalogowany ma dostęp do strony ze swoimi filmikami, oraz filmikami polubionymi. Jeśli użytkownik ukryje jakiś filmik – będzie on widoczny tylko dla niego (oraz administratora), który zgodnie z kryteriami widzi wszystkie filmiki
+Użytkownik zalogowany ma dostęp do strony ze swoimi filmikami, oraz filmikami polubionymi. Jeśli użytkownik ukryje jakiś filmik – będzie on widoczny tylko dla niego (oraz administratora, który zgodnie z kryteriami widzi wszystkie filmiki)
 
 **Kryterium 5:**
 
