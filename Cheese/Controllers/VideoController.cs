@@ -199,8 +199,8 @@ namespace CheeseHub.Controllers
 
             Guid videoId = Guid.NewGuid();
 
-            string uploadsFolder = Path.Combine(_environment.ContentRootPath, "UploadedVideos");
-            string coversUploadsFolder = Path.Combine(_environment.ContentRootPath, "UploadedVideosCovers");
+            string uploadsFolder = Path.Combine("UploadedVideos");
+            string coversUploadsFolder = Path.Combine("UploadedVideosCovers");
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
