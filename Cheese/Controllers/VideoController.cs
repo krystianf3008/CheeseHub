@@ -153,17 +153,6 @@ namespace CheeseHub.Controllers
             );
         }
 
-        [HttpGet("All", Name = "GetAll")]
-        public async Task<IActionResult> GetAll()
-        {
-            List<Video> video = await _videoService.GetAll();
-            if (video == null)
-            {
-                return NotFound("Video is null");
-            }
-
-            return Ok(video);
-        }
         [HttpGet("Watch/{id}", Name = "Watch")]
         public async Task<IActionResult> GetWatch(Guid Id)
         {
@@ -210,8 +199,8 @@ namespace CheeseHub.Controllers
 
             Guid videoId = Guid.NewGuid();
 
-            string uploadsFolder = Path.Combine(_environment.ContentRootPath, "UploadedVideos");
-            string coversUploadsFolder = Path.Combine(_environment.ContentRootPath, "UploadedVideosCovers");
+            string uploadsFolder = Path.Combine("UploadedVideos");
+            string coversUploadsFolder = Path.Combine("UploadedVideosCovers");
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
@@ -247,7 +236,7 @@ namespace CheeseHub.Controllers
                     UserId = user.Id,
                     Path = filePath,
                     ImagePath = coverPath,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow,
                     Status = (char)Status.New,
                     CategoryId = Guid.Parse( video.CategoryId),
                 };

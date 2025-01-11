@@ -37,9 +37,16 @@ namespace CheeseHub
             AuthenticationSettings authenticationSettings = new AuthenticationSettings();
             configuration.GetSection("JWT").Bind(authenticationSettings);
 
-            var connectionString = builder.Configuration.GetConnectionString("VideoDb");
+            ///var connectionString = builder.Configuration.GetConnectionString("VideoDb");
+            ///DEPLOY NA POTRZEBY OCENY PROJEKTU - UTWORZONA BAZA
+            var connectionString = "Host=46.171.218.181;Port=5433;Username=postgres;Password=Duzymis123456;Database=VideoDb;TrustServerCertificate=True;";
+
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(connectionString));
+            //options.UseSqlServer(connectionString)
+            options.UseNpgsql(connectionString)
+            
+            
+            );
             builder.Services.AddCors(options =>
             {
                     
@@ -145,8 +152,22 @@ namespace CheeseHub
                     }
                 });
             });
-            var app = builder.Build();
 
+            var app = builder.Build();
+            app.UseCors("AllowAllOrigins");
+
+            app.UseRouting();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+            app.UseAuthentication();
+
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                endpoints.MapFallbackToFile("index.html");
+            });
 
             if (app.Environment.IsDevelopment())
             {
@@ -159,10 +180,7 @@ namespace CheeseHub
                 });
                 DatabaseManagmentService.MigrationInitialisation(app);
             }
-            app.UseCors("AllowAllOrigins");
 
-            app.UseAuthentication();
-            app.UseAuthorization();
             app.UseMiddleware<TokenValidationMiddleware>();
 
             app.UseHttpsRedirection();

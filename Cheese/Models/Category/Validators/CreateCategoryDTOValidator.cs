@@ -9,6 +9,7 @@ namespace CheeseHub.Models.Category.Validators
         public CreateCategoryDTOValidator(ICategoryService categoryService)
         {
             RuleFor(x => x.Name).Must(x => categoryService.IsNameUnique(x)).WithMessage("Name must be unique");
+            RuleFor(x => x.Name).NotNull().NotEmpty().MaximumLength(200);
          
         }
     }

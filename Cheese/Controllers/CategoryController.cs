@@ -88,7 +88,7 @@ namespace CheeseHub.Controllers
 
             Guid categoryId = Guid.NewGuid();
 
-            string uploadsFolder = Path.Combine(_environment.ContentRootPath, "CategoriesCovers");
+            string uploadsFolder = Path.Combine( "CategoriesCovers");
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);

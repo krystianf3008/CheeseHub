@@ -28,7 +28,7 @@ namespace CheeseHub.Controllers
             _userService = userService;
             _jwtService = jwtService;
         }
-        [HttpPost]
+        [HttpPost("")]
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterUserDTO model)
         {
@@ -92,7 +92,7 @@ namespace CheeseHub.Controllers
             return Ok("Logged out successfully");
         }
 
-
+        [Authorize(Roles="Admin")]
         [HttpGet("{id}", Name = "GetUser")]
         public async Task<IActionResult> Get([FromBody] Guid id)
         {

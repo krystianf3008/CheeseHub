@@ -46,13 +46,12 @@ namespace CheeseHub.Services
                 _authenticationSettings.Issuer,
                 _authenticationSettings.Issuer,
                 claims,
-                expires: DateTime.UtcNow.AddMinutes(_authenticationSettings.ExpireHours),
+                expires: DateTime.UtcNow.AddHours(_authenticationSettings.ExpireHours),
                 signingCredentials: credentials
             );
 
             string jwt = new JwtSecurityTokenHandler().WriteToken(jwtToken);
 
-            // Generowanie RefreshToken
             string refreshToken = Guid.NewGuid().ToString();
             var newRefreshToken = new RefreshToken
             {
